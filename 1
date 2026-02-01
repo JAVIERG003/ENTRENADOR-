@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Planificador de Entrenamientos</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8; --glass: rgba(255,255,255,0.03);
+    --success:#10b981; --danger:#ef4444; --text:#e6eef6;
+  }
+  *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+  body{margin:0;background:linear-gradient(180deg,#071028 0%, #071a2a 60%);color:var(--text);min-height:100vh;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid rgba(255,255,255,0.03);backdrop-filter: blur(6px);}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;color:#021022}
+  h1{font-size:18px;margin:0}
+  .user-welcome{font-size:14px;color:var(--muted)}
+  .container{display:flex;gap:20px;padding:20px;max-width:1200px;margin:20px auto;}
+  .sidebar{width:300px;background:linear-gradient(180deg,var(--card),#071226);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(2,6,23,0.6)}
+  .main{flex:1;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:18px;min-height:520px}
+  .section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .btn{background:var(--accent);color:#021022;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text)}
+  .weeks-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:6px}
+  .week-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;background:var(--glass);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+  .week-item.active{outline:2px solid rgba(6,182,212,0.12);box-shadow:0 6px 18px rgba(6,182,212,0.06)}
+  .small{font-size:13px;color:var(--muted)}
+  .days{display:flex;gap:12px;flex-wrap:wrap}
+  .day-card{background:linear-gradient(180deg,#071a2a, #071226);padding:12px;border-radius:10px;min-width:220px;flex:1;border:1px solid rgba(255,255,255,0.03)}
+  .day-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .ex-list{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;padding-right:6px}
+  .ex-item{background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:6px}
+  .ex-top{display:flex;align-items:center;justify-content:space-between}
+  .muted{color:var(--muted);font-size:13px}
+  .series-row{display:flex;gap:8px;align-items:center}
+  input[type="text"], select, input[type="number"]{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:var(--text);width:100%}
+  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:60;backdrop-filter: blur(4px)}
+  .modal-card{width:920px;max-width:95%;background:linear-gradient(180deg,#071226,#071226);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.04)}
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:12px}
+  .search{display:flex;gap:8px;margin-bottom:8px}
+  .list-ex{max-height:420px;overflow:auto;border-radius:8px;padding:6px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02))}
+  .exercise-row{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .pill{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:13px}
+  .top-actions{display:flex;gap:8px;align-items:center}
+  .empty{color:var(--muted);padding:18px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02))}
+  .search-input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);width:100%}
+  .rename{background:transparent;border:none;color:var(--muted);cursor:pointer}
+  .controls{display:flex;gap:8px;align-items:center}
+  .file-input{display:none}
+  /* scrollbar */
+  .list-ex::-webkit-scrollbar, .weeks-list::-webkit-scrollbar, .ex-list::-webkit-scrollbar {width:8px}
+  .list-ex::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.03);border-radius:8px}
+  @media (max-width:900px){.container{flex-direction:column;padding:12px}.sidebar{width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">PT</div>
+    <div>
+      <h1>Planificador de Entrenamientos</h1>
+      <div class="user-welcome" id="welcomeSmall">Bienvenido</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="btn" id="openExercisesBtn">Ejercicios</button>
+    <button class="btn ghost" id="exportBtn" title="Exportar datos">Exportar datos</button>
+    <button class="btn ghost" id="importBtn" title="Importar datos">Importar datos</button>
+    <button class="btn ghost" id="downloadHtmlBtn" title="Descargar HTML">Descargar HTML</button>
+    <button class="btn ghost" id="shareDataBtn" title="Copiar JSON">Compartir</button>
+    <button class="btn ghost" id="resetBtn">Restablecer datos</button>
+  </div>
+</header>
+
+<div class="container">
+  <aside class="sidebar">
+    <div class="section-title">
+      <div>
+        <strong>Semanas</strong>
+        <div class="small">Organiza tu plan por semanas</div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="addWeekBtn">+ Semana</button>
+      </div>
+    </div>
+    <div class="weeks-list" id="weeksList"></div>
+    <hr style="border:none;height:1px;background:rgba(255,255,255,0.02);margin:12px 0">
+    <div>
+      <strong>Usuario</strong>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="flex:1">
+          <input id="nameInput" type="text" placeholder="Tu nombre" />
+        </div>
+        <button class="btn" id="saveNameBtn">Guardar</button>
+      </div>
+      <div class="small" style="margin-top:8px">Tu nombre aparece en la cabecera y se guarda localmente.</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="section-title">
+      <div>
+        <strong id="mainTitle">Plan de entrenamiento</strong>
+        <div class="small" id="subtitle">Selecciona o crea una semana</div>
+      </div>
+      <div class="controls">
+        <button class="btn ghost" id="addDayBtn">+ Día</button>
+        <button class="btn ghost" id="renameWeekBtn">Renombrar semana</button>
+        <button class="btn ghost" id="deleteWeekBtn" style="color:var(--danger);border-color:rgba(239,68,68,0.12)">Eliminar</button>
+      </div>
+    </div>
+
+    <div id="contentArea">
+      <div class="empty" id="emptyMsg">No hay semanas. Pulsa <strong>+ Semana</strong> para empezar.</div>
+      <div class="days" id="daysContainer" style="display:none"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Añadir ejercicio -->
+<div id="exerciseModal" class="modal" style="display:none">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <strong>Añadir ejercicio</strong>
+        <div class="small">Selecciona un ejercicio y configura series</div>
+      </div>
+      <div><button class="btn ghost" id="closeExerciseModal">Cerrar</button></div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="search">
+          <input id="exerciseSearch" class="search-input" placeholder="Buscar ejercicio..." />
+          <button class="btn ghost" id="addCustomExerciseBtn">+ Personalizado</button>
+        </div>
+        <div class="list-ex" id="exerciseList"></div>
+      </div>
+
+      <div>
+        <div style="background:linear-gradient(180deg,#071a2a,#071226);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)">
+          <div><strong id="selectedExerciseTitle">Ninguno seleccionado</strong></div>
+          <div class="small" id="selectedExerciseType">Elige un ejercicio para configurar</div>
+
+          <div style="margin-top:12px">
+            <label class="small">Series</label>
+            <input id="seriesCount" type="number" min="1" value="3" />
+          </div>
+
+          <div style="margin-top:8px">
+            <label class="small">Tipo de series</label>
+            <select id="seriesType">
+              <option value="lineal">Lineales</option>
+              <option value="descendente">Descendentes</option>
+              <option value="pirámide">Pirámide</option>
+              <option value="rest-pause">Rest-Pause</option>
+              <option value="isométrico">Isométrico</option>
+            </select>
+          </div>
+
+          <div style="margin-top:12px">
+            <div class="small">Configuración por serie</div>
+            <div id="seriesConfigArea" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto"></div>
+          </div>
+
+          <div class="footer">
+            <button class="btn ghost" id="cancelAddExercise">Cancelar</button>
+            <button class="btn" id="confirmAddExercise">Añadir al día</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Ejercicios (listado completo) -->
+<div id="exercisesModal" class="modal" style="display:none">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <strong>Ejercicios</strong>
+        <div class="small">Listado completo de ejercicios (puedes añadir personalizados)</div>
+      </div>
+      <div><button class="btn ghost" id="closeExercisesModal">Cerrar</button></div>
+    </div>
+
+    <div style="display:flex;gap:12px">
+      <div style="flex:1">
+        <input id="globalExerciseSearch" class="search-input" placeholder="Buscar en todos los ejercicios..." />
+        <div class="list-ex" id="globalExerciseList" style="margin-top:8px;max-height:520px"></div>
+      </div>
+      <div style="width:320px">
+        <div style="background:linear-gradient(180deg,#071a2a,#071226);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)">
+          <strong>Añadir ejercicio personalizado</strong>
+          <div style="margin-top:8px">
+            <input id="customExerciseName" type="text" placeholder="Nombre del ejercicio" />
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="btn" id="saveCustomExercise">Guardar</button>
+              <button class="btn ghost" id="clearCustomExercise">Limpiar</button>
+            </div>
+            <div class="small" style="margin-top:8px">Los ejercicios personalizados se guardan localmente.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Input oculto para importar -->
+<input id="fileInput" class="file-input" type="file" accept="application/json" />
+
+<script>
+/* ======= Datos iniciales ======= */
+const DEFAULT_EXERCISES = [
+  /* (mismo listado de 400 ejercicios que en la versión anterior) */
+  "Flexiones clásicas","Flexiones diamante","Flexiones inclinadas","Flexiones declinadas","Flexiones con palmada",
+  "Flexiones a una mano","Flexiones espartanas","Flexiones con agarre estrecho","Flexiones con agarre ancho","Flexiones con pies elevados",
+  "Dominadas pronas","Dominadas supinas","Dominadas agarre neutro","Dominadas con lastre","Dominadas asistidas",
+  "Remo invertido","Remo con anillas","Remo con barra","Remo con mancuerna a una mano","Remo en máquina",
+  "Fondos en paralelas","Fondos en banco","Fondos con lastre","Fondos asistidos","Fondos en anillas",
+  "Muscle-up en anillas","Muscle-up en barra","Pull-over en barra","Pull-over con mancuerna","Pull-over en polea",
+  "Sentadilla libre","Sentadilla frontal","Sentadilla búlgara","Sentadilla pistol (asistida)","Sentadilla con salto",
+  "Prensa de piernas","Zancadas caminando","Zancadas estáticas","Peso muerto convencional","Peso muerto rumano",
+  "Hip thrust","Puente de glúteos a una pierna","Elevación de talones de pie","Elevación de talones sentado","Sentadilla hack",
+  "Press de banca plano","Press de banca inclinado","Press de banca declinado","Press con mancuernas","Press con barra",
+  "Press militar de pie","Press militar sentado","Press Arnold","Elevaciones laterales","Elevaciones frontales",
+  "Pájaros con mancuernas","Face pulls","Remo al mentón","Press con kettlebell","Push press",
+  "Curl bíceps con barra","Curl bíceps con mancuernas","Curl martillo","Curl concentrado","Curl en banco inclinado",
+  "Curl en polea","Curl 21","Extensión de tríceps en polea","Fondos para tríceps en paralelas","Patada de tríceps con mancuerna",
+  "Extensión de tríceps por encima de la cabeza","Press cerrado","Tríceps en banco","Press de tríceps en máquina","Press de pecho en máquina",
+  "Plancha frontal","Plancha lateral","Plancha con elevación de pierna","Plancha con toque de hombro","Plancha dinámica",
+  "Crunch abdominal","Crunch inverso","Elevación de piernas colgado","Elevación de piernas en banco","Bicicleta abdominal",
+  "Russian twist","Rollout con rueda","Hollow hold","Superman","V-ups",
+  "Escalador (mountain climbers)","Burpee","Salto de caja","Sprint en cinta","Saltar la comba",
+  "Farmer's walk","Kettlebell swing","Turkish get-up","Clean and press","Snatch con kettlebell",
+  "Swing con mancuerna","Remo con TRX","Pike push-up","Handstand push-up asistido","Handstand push-up libre",
+  "Tuck planche","Planche lean","Planche tuck","L-sit en paralelas","L-sit en suelo",
+  "Dragon flag","Hanging knee raise","Toes to bar","Windshield wipers","Oblique crunch",
+  "Good morning","Hip hinge con kettlebell","Glute bridge con barra","Step-up con mancuerna","Box squat",
+  "Sled push","Sled pull","Tire flip","Battle ropes","Sled drags",
+  "Cable crossover","Aperturas con mancuernas","Pec deck","Pullover en polea alta","Press en máquina Smith",
+  "Elevación de cadera con banda","Abducción de cadera en máquina","Aducción de cadera","Clamshell","Monster walk con banda",
+  "Pull-through con cable","Kettlebell deadlift","Romanian deadlift con barra","Deadlift sumo","Good morning con barra",
+  "Hip thrust con banda","Single leg deadlift","Nordic hamstring curl","Leg curl tumbado","Leg curl sentado",
+  "Leg extension","Glute ham raise","Calf raise en prensa","Seated calf raise","Donkey calf raise",
+  "Chest supported row","One-arm row con kettlebell","Inverted row con anillas","Cable row sentado","T-bar row",
+  "Incline row con mancuernas","Y-raise","T-raise","I-raise","Scapular pull-ups",
+  "Scapular push-ups","Band pull-aparts","Wall slides","Overhead carry","Zottman curl",
+  "Concentration curl","Preacher curl","Cable curl","Reverse curl","Spider curl",
+  "Skull crushers","Overhead triceps extension con cuerda","Triceps kickback con cable","Close grip bench press","JM press",
+  "Bench dips con peso","Ring dips con lastre","Incline push-ups","Decline push-ups","Archer push-ups",
+  "Typewriter push-ups","Clapping push-ups","Plyo push-ups","Svend press","Chest dips en anillas",
+  "Incline dumbbell fly","Decline dumbbell fly","Single-arm chest press","Iso hold press","Isometric chest squeeze",
+  "Weighted pull-ups","Commando pull-ups","Archer pull-ups","Typewriter pull-ups","One-arm assisted pull-up",
+  "Lat pulldown agarre ancho","Lat pulldown agarre estrecho","Straight-arm pulldown","Reverse grip pulldown","Single-arm pulldown",
+  "Kipping pull-up","Butterfly pull-up","Assisted pull-up machine","Neutral grip pulldown","Cable lat row",
+  "Inverted row con barra baja","TRX row con una pierna","Ring row con agarre estrecho","Ring row con agarre ancho","Bodyweight row con pies elevados",
+  "Pistol squat asistida","Assisted pistol en TRX","Cossack squat","Sissy squat","Goblet squat",
+  "Front squat con barra","Zercher squat","Anderson squat","Box pistol","Shrimp squat",
+  "Walking lunge con barra","Reverse lunge con mancuernas","Curtsy lunge","Lunge jump","Lunge lateral",
+  "Step down","Heel elevated squat","Banded squat","Paused squat","Tempo squat",
+  "Deadlift con agarre mixto","Rack pull","Deficit deadlift","Snatch-grip deadlift","Trap bar deadlift",
+  "Sumo deadlift high pull","Romanian deadlift con mancuernas","Single-leg Romanian deadlift","Kettlebell single leg deadlift","Jefferson deadlift",
+  "Hip abduction con banda","Hip adduction con banda","Cable hip abduction","Cable hip adduction","Standing hip abduction",
+  "Cable kickback","Donkey kick","Fire hydrant","Banded glute bridge","Single leg hip thrust con banco",
+  "Weighted step-up","Bulgarian split squat con barra","Reverse Nordic curl","Leg press single leg","Sled single leg push",
+  "Calf raise con barra","Single leg calf raise","Seated calf raise con mancuerna","Calf press en máquina","Jump rope double unders",
+  "Sprint interval (30/30)","Hill sprints","Tempo run","Fartlek","Long slow distance",
+  "Rowing intervals","Bike sprints","Assault bike intervals","Stair sprints","Prowler pushes",
+  "Handstand hold","Wall handstand","Freestanding handstand","Handstand walk","Handstand shoulder taps",
+  "Ring support hold","Ring tuck support","Ring L-sit","Ring inverted hang","Ring skin the cat",
+  "Ring front lever tuck","Front lever progressions","Back lever tuck","Back lever progressions","One-arm row progressions",
+  "Weighted dips","Weighted push-ups","Weighted squats","Weighted lunges","Weighted pull-ups",
+  "Isometric hold en sentadilla","Isometric hold en dominada","Isometric hold en press","Isometric hold en puente","Isometric hold en plancha",
+  "Tempo push-ups 3-1-1","Tempo squats 3-1-1","Tempo deadlift 3-1-1","Paused bench press","Paused squat",
+  "Cluster sets en press","Cluster sets en sentadilla","Rest-pause en curl","Rest-pause en press","Rest-pause en sentadilla",
+  "Drop sets en curl","Drop sets en press","Drop sets en elevaciones laterales","Giant set pecho/hombro","Superset espalda/bíceps",
+  "Superset pecho/tríceps","Superset piernas/glúteos","Circuito full body","EMOM 12 minutos","AMRAP 20 minutos",
+  "Tabata burpees","Tabata sprints","Plyometric circuit","Agility ladder drills","Cone drills",
+  "Medicine ball slams","Medicine ball throws","Sled sprint","Kettlebell clean","Kettlebell snatch",
+  "Kettlebell thruster","Kettlebell goblet squat","Kettlebell farmer carry","Kettlebell halo","Kettlebell figure 8",
+  "TRX chest press","TRX triceps press","TRX single leg squat","TRX pike","TRX atomic push-up",
+  "TRX hamstring curl","TRX face pull","TRX Y-fly","TRX row with rotation","TRX assisted pistol",
+  "Sled push heavy","Sled push light","Sled pull heavy","Sled pull light","Tire flip heavy",
+  "Battle rope waves","Battle rope slams","Battle rope alternating","Battle rope circles","Battle rope double wave",
+  "Box jump","Depth jump","Lateral box jump","Single leg box jump","Box step-up explosive",
+  "Plyo lunges","Broad jump","Standing long jump","Vertical jump test","Reactive jump",
+  "Agility T-test","Shuttle run 5-10-5","Pro agility drill","Hexagon drill","Carioca drill",
+  "Incline row con barra","Incline dumbbell row","Chest supported T-bar row","Meadow row","Kroc row",
+  "One-arm cable row","Cable single arm pulldown","Cable high row","Cable low row","Cable diagonal row",
+  "Face pull con cuerda","External rotation con banda","Internal rotation con banda","Scaption","Reverse fly en peck deck",
+  "Shoulder press en máquina","Seated dumbbell press","Standing barbell press","Push press con barra","Behind neck press (variación segura)",
+  "Upright row con barra","Upright row con mancuernas","High pull","Cable upright row","Dumbbell shrug",
+  "Farmer carry con mancuernas","Suitcase carry","Overhead carry con kettlebell","Waiter carry","Bottoms-up carry",
+  "Sled drag con arnés","Sled drag con cuerda","Sled lateral drag","Sled backward drag","Sled prowler sprint",
+  "Incline bench cable fly","Incline bench dumbbell press","Incline bench press con barra","Decline bench press con barra","Decline dumbbell fly",
+  "Chest dips en máquina","Cable chest press","Single-arm cable chest press","Iso lateral chest press","Pec fly con banda",
+  "Weighted hollow hold","Hollow rock","Hanging windshield wipers","L-sit to tuck","L-sit to V-sit",
+  "Dragon flag negatives","Negative pull-ups lentos","Negative muscle-up","Slow eccentric push-ups","Slow eccentric squats",
+  "Isometric chin-up hold","Isometric push-up hold","Isometric squat hold","Isometric lunge hold","Isometric bridge hold",
+  "Sprint technique drills","A-skips","B-skips","Butt kicks","High knees",
+  "Stride outs","Acceleration drills","Deceleration drills","Change of direction drills","Reactive start drills",
+  "Mobility: cadera 1","Movilidad: hombro 1","Movilidad: tobillo 1","Movilidad: columna 1","Movilidad: muñeca 1",
+  "Estiramiento dinámico piernas","Estiramiento estático posterior","Estiramiento pectoral en puerta","Estiramiento dorsal con banda","Estiramiento de tríceps",
+  "Foam rolling cuádriceps","Foam rolling isquiotibiales","Foam rolling glúteos","Foam rolling espalda","Foam rolling gemelos",
+  "Calentamiento general 10 min","Calentamiento específico 8 min","Activación glúteos con banda","Activación del core","Activación de hombros con banda",
+  "Cool down 10 min","Respiración diafragmática","Movilidad articular 6 min","Progresión de flexiones 1","Progresión de dominadas 1",
+  "Progresión de sentadilla 1","Progresión de pistol 1","Progresión de planche 1","Progresión de front lever 1","Progresión de handstand 1",
+  "Entrenamiento de fuerza 3x5","Entrenamiento hipertrofia 4x8-12","Entrenamiento resistencia 3x15-20","Entrenamiento potencia 6x3","Entrenamiento mixto full body",
+  "Circuito calistenia 5 estaciones","Circuito fuerza 6 estaciones","Entrenamiento de movilidad y fuerza","Sesión técnica de barra","Sesión técnica de anillas",
+  "Test 1RM sentadilla","Test 1RM press banca","Test 1RM peso muerto","Test 5RM dominadas","Test de salto vertical",
+  "Test de resistencia 12 min","Test Cooper 12 min","Test de sprint 30m","Test de agilidad","Test de fuerza isométrica"
+];
+(function ensure400(){
+  let arr = DEFAULT_EXERCISES;
+  let i=0;
+  while(arr.length<400){
+    arr.push(arr[i % arr.length] + " (var " + Math.floor(i/arr.length+1) + ")");
+    i++;
+  }
+  window.DEFAULT_EXERCISES = arr.slice(0,400);
+})();
+
+/* ======= Estado y utilidades ======= */
+const STORAGE_KEY = 'planador_data_v1';
+const NAME_KEY = 'planador_nombre_v1';
+const EXERCISES_KEY = 'planador_exercises_v1';
+
+let state = {
+  name: localStorage.getItem(NAME_KEY) || '',
+  weeks: [],
+  exercises: JSON.parse(localStorage.getItem(EXERCISES_KEY) || 'null') || window.DEFAULT_EXERCISES.slice()
+};
+
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); localStorage.setItem(EXERCISES_KEY, JSON.stringify(state.exercises)); }
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){ try{ state = JSON.parse(raw); }catch(e){ console.error(e); } }
+  state.exercises = state.exercises || window.DEFAULT_EXERCISES.slice();
+}
+loadState();
+
+/* ======= Helpers ======= */
+function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function el(tag,attrs={},...children){ const e=document.createElement(tag); for(let k in attrs){ if(k.startsWith('on') && typeof attrs[k]==='function') e.addEventListener(k.slice(2),attrs[k]); else if(k==='html') e.innerHTML=attrs[k]; else e.setAttribute(k,attrs[k]); } children.flat().forEach(c=>{ if(c==null) return; if(typeof c==='string') e.appendChild(document.createTextNode(c)); else e.appendChild(c); }); return e; }
+
+/* ======= Render UI ======= */
+const weeksList = document.getElementById('weeksList');
+const daysContainer = document.getElementById('daysContainer');
+const emptyMsg = document.getElementById('emptyMsg');
+const mainTitle = document.getElementById('mainTitle');
+const subtitle = document.getElementById('subtitle');
+const welcomeSmall = document.getElementById('welcomeSmall');
+const nameInput = document.getElementById('nameInput');
+const saveNameBtn = document.getElementById('saveNameBtn');
+
+let activeWeekId = state.weeks.length ? state.weeks[0].id : null;
+
+function renderHeaderName(){
+  welcomeSmall.textContent = state.name ? `Hola, ${state.name}` : 'Bienvenido';
+  document.getElementById('nameInput').value = state.name || '';
+  mainTitle.textContent = state.name ? `${state.name} — Plan de entrenamiento` : 'Plan de entrenamiento';
+}
+renderHeaderName();
+
+function renderWeeks(){
+  weeksList.innerHTML = '';
+  if(state.weeks.length===0){
+    emptyMsg.style.display='block';
+    daysContainer.style.display='none';
+    subtitle.textContent = 'Selecciona o crea una semana';
+    return;
+  }
+  emptyMsg.style.display='none';
+  daysContainer.style.display='flex';
+  state.weeks.forEach(w=>{
+    const item = el('div',{class:'week-item' + (w.id===activeWeekId ? ' active' : ''), onclick:()=>{ activeWeekId=w.id; renderWeeks(); renderDays(); }});
+    const left = el('div',{}, el('div',{style:'font-weight:700'}, w.title || 'Semana'), el('div',{class:'small'}, `${w.days.length} días`));
+    const right = el('div',{}, 
+      el('button',{class:'rename', onclick:(e)=>{ e.stopPropagation(); renameWeek(w.id); }}, '✎'),
+      el('button',{class:'rename', onclick:(e)=>{ e.stopPropagation(); deleteWeek(w.id); }}, '🗑')
+    );
+    item.appendChild(left); item.appendChild(right);
+    weeksList.appendChild(item);
+  });
+  const addHint = el('div',{class:'small', style:'margin-top:10px;color:var(--muted)'}, 'Pulsa una semana para editarla. Usa + Semana para crear una nueva.');
+  weeksList.appendChild(addHint);
+}
+
+function renderDays(){
+  const week = state.weeks.find(w=>w.id===activeWeekId);
+  if(!week){ daysContainer.innerHTML=''; return; }
+  subtitle.textContent = week.title || 'Semana';
+  daysContainer.innerHTML = '';
+  week.days.forEach(day=>{
+    const card = el('div',{class:'day-card'});
+    const header = el('div',{class:'day-header'}, el('div',{}, el('strong',{}, day.title || 'Día'), el('div',{class:'small'}, `${day.exercises.length} ejercicios`)),
+      el('div',{}, 
+        el('button',{class:'rename', onclick:()=>renameDay(week.id,day.id)}, '✎'),
+        el('button',{class:'rename', onclick:()=>deleteDay(week.id,day.id)}, '🗑')
+      )
+    );
+    card.appendChild(header);
+    const exList = el('div',{class:'ex-list'});
+    if(day.exercises.length===0){
+      exList.appendChild(el('div',{class:'empty'}, 'No hay ejercicios. Pulsa "Añadir ejercicio"'));
+    } else {
+      day.exercises.forEach(ex=>{
+        const exItem = el('div',{class:'ex-item'});
+        const top = el('div',{class:'ex-top'}, el('div',{}, el('strong',{}, ex.name), el('div',{class:'muted'}, ex.seriesType + ' • ' + ex.series.length + ' series')), 
+          el('div',{}, el('button',{class:'rename', onclick:()=>editExercise(week.id,day.id,ex.id)}, '✎'), el('button',{class:'rename', onclick:()=>removeExercise(week.id,day.id,ex.id)}, '🗑'))
+        );
+        exItem.appendChild(top);
+        ex.series.forEach((s,i)=>{
+          const srow = el('div',{class:'series-row'}, el('div',{style:'width:40%'}, el('div',{class:'small'}, `Serie ${i+1}`), el('div',{}, s.reps || s.time || '-')), el('div',{style:'width:25%'}, el('div',{class:'small'}, 'Peso'), el('div',{}, s.weight || '-')), el('div',{style:'width:25%'}, el('div',{class:'small'}, 'Descanso'), el('div',{}, s.rest || '-')));
+          exItem.appendChild(srow);
+        });
+        if(ex.notes) exItem.appendChild(el('div',{class:'small'}, 'Notas: ' + ex.notes));
+        exList.appendChild(exItem);
+      });
+    }
+    const addBtn = el('div',{style:'margin-top:8px;display:flex;gap:8px;justify-content:space-between;align-items:center'}, el('div',{class:'small'}, ''), el('div',{}, el('button',{class:'btn', onclick:()=>openAddExerciseModal(week.id,day.id)}, 'Añadir ejercicio')));
+    card.appendChild(exList);
+    card.appendChild(addBtn);
+    daysContainer.appendChild(card);
+  });
+}
+
+/* ======= CRUD Semanas y Días ======= */
+document.getElementById('addWeekBtn').addEventListener('click', ()=>{
+  const id = uid('week');
+  const title = prompt('Nombre de la semana:', `Semana ${state.weeks.length+1}`) || `Semana ${state.weeks.length+1}`;
+  const week = {id,title,days:[]};
+  state.weeks.push(week);
+  activeWeekId = id;
+  saveState(); renderWeeks(); renderDays();
+});
+
+function renameWeek(weekId){
+  const w = state.weeks.find(x=>x.id===weekId);
+  if(!w) return;
+  const newName = prompt('Nuevo nombre de la semana:', w.title) || w.title;
+  w.title = newName;
+  saveState(); renderWeeks(); renderDays();
+}
+function deleteWeek(weekId){
+  if(!confirm('¿Eliminar esta semana y todo su contenido?')) return;
+  state.weeks = state.weeks.filter(w=>w.id!==weekId);
+  activeWeekId = state.weeks.length ? state.weeks[0].id : null;
+  saveState(); renderWeeks(); renderDays();
+}
+
+document.getElementById('addDayBtn').addEventListener('click', ()=>{
+  const week = state.weeks.find(w=>w.id===activeWeekId);
+  if(!week){ alert('Selecciona o crea una semana primero.'); return; }
+  const id = uid('day');
+  const title = prompt('Nombre del día:', `Día ${week.days.length+1}`) || `Día ${week.days.length+1}`;
+  week.days.push({id,title,exercises:[]});
+  saveState(); renderWeeks(); renderDays();
+});
+
+function renameDay(weekId,dayId){
+  const w = state.weeks.find(x=>x.id===weekId);
+  if(!w) return;
+  const d = w.days.find(x=>x.id===dayId);
+  if(!d) return;
+  const newName = prompt('Nuevo nombre del día:', d.title) || d.title;
+  d.title = newName;
+  saveState(); renderDays();
+}
+function deleteDay(weekId,dayId){
+  if(!confirm('¿Eliminar este día y sus ejercicios?')) return;
+  const w = state.weeks.find(x=>x.id===weekId);
+  if(!w) return;
+  w.days = w.days.filter(d=>d.id!==dayId);
+  saveState(); renderDays();
+}
+
+/* ======= Añadir / Editar ejercicios en un día ======= */
+const exerciseModal = document.getElementById('exerciseModal');
+const exerciseListEl = document.getElementById('exerciseList');
+const exerciseSearch = document.getElementById('exerciseSearch');
+const selectedExerciseTitle = document.getElementById('selectedExerciseTitle');
+const selectedExerciseType = document.getElementById('selectedExerciseType');
+const seriesCountInput = document.getElementById('seriesCount');
+const seriesTypeSelect = document.getElementById('seriesType');
+const seriesConfigArea = document.getElementById('seriesConfigArea');
+const confirmAddExercise = document.getElementById('confirmAddExercise');
+const cancelAddExercise = document.getElementById('cancelAddExercise');
+const closeExerciseModal = document.getElementById('closeExerciseModal');
+const addCustomExerciseBtn = document.getElementById('addCustomExerciseBtn');
+
+let modalContext = {weekId:null, dayId:null, editingExerciseId:null, selectedExerciseName:null};
+
+function openAddExerciseModal(weekId, dayId, editingExerciseId=null){
+  modalContext = {weekId, dayId, editingExerciseId, selectedExerciseName:null};
+  exerciseModal.style.display='flex';
+  selectedExerciseTitle.textContent = 'Ninguno seleccionado';
+  selectedExerciseType.textContent = 'Elige un ejercicio';
+  seriesCountInput.value = 3;
+  seriesTypeSelect.value = 'lineal';
+  seriesConfigArea.innerHTML = '';
+  renderExerciseList();
+}
+
+function closeModal(){
+  exerciseModal.style.display='none';
+  modalContext = {weekId:null, dayId:null, editingExerciseId:null, selectedExerciseName:null};
+}
+closeExerciseModal.addEventListener('click', closeModal);
+cancelAddExercise.addEventListener('click', closeModal);
+
+function renderExerciseList(filter=''){
+  exerciseListEl.innerHTML = '';
+  const list = state.exercises.filter(e=>e.toLowerCase().includes(filter.toLowerCase()));
+  list.forEach(name=>{
+    const row = el('div',{class:'exercise-row'}, el('div',{}, el('div',{}, name), el('div',{class:'small'}, '')), el('div',{}, el('button',{class:'btn ghost', onclick:()=>selectExercise(name)}, 'Seleccionar')));
+    exerciseListEl.appendChild(row);
+  });
+  if(list.length===0) exerciseListEl.appendChild(el('div',{class:'small'}, 'No se encontraron ejercicios'));
+}
+exerciseSearch.addEventListener('input', ()=>renderExerciseList(exerciseSearch.value));
+
+function selectExercise(name){
+  modalContext.selectedExerciseName = name;
+  selectedExerciseTitle.textContent = name;
+  selectedExerciseType.textContent = 'Ejercicio seleccionado';
+  buildSeriesConfig();
+}
+
+function buildSeriesConfig(){
+  const n = Math.max(1, parseInt(seriesCountInput.value) || 1);
+  seriesConfigArea.innerHTML = '';
+  for(let i=0;i<n;i++){
+    const row = el('div',{style:'display:flex;gap:8px;align-items:center'}, 
+      el('div',{style:'flex:1'}, el('input',{type:'text', placeholder:'Reps o tiempo (ej. 8, 45s)', value:''})),
+      el('div',{style:'width:110px'}, el('input',{type:'text', placeholder:'Peso (kg)', value:''})),
+      el('div',{style:'width:110px'}, el('input',{type:'text', placeholder:'Descanso (s)', value:''}))
+    );
+    seriesConfigArea.appendChild(row);
+  }
+}
+seriesCountInput.addEventListener('change', buildSeriesConfig);
+seriesTypeSelect.addEventListener('change', ()=>{/* could adapt UI per type */});
+
+confirmAddExercise.addEventListener('click', ()=>{
+  if(!modalContext.selectedExerciseName){ alert('Selecciona un ejercicio primero'); return; }
+  const week = state.weeks.find(w=>w.id===modalContext.weekId);
+  if(!week) return;
+  const day = week.days.find(d=>d.id===modalContext.dayId);
+  if(!day) return;
+  const series = Array.from(seriesConfigArea.children).map(r=>{
+    const inputs = r.querySelectorAll('input');
+    return {reps:inputs[0].value || '', weight:inputs[1].value || '', rest:inputs[2].value || ''};
+  });
+  const exObj = {
+    id: modalContext.editingExerciseId || uid('ex'),
+    name: modalContext.selectedExerciseName,
+    seriesType: seriesTypeSelect.value,
+    series,
+    notes: ''
+  };
+  if(modalContext.editingExerciseId){
+    const idx = day.exercises.findIndex(e=>e.id===modalContext.editingExerciseId);
+    if(idx>=0) day.exercises[idx] = exObj;
+  } else {
+    day.exercises.push(exObj);
+  }
+  saveState(); renderDays(); closeModal();
+});
+
+/* Editar ejercicio existente */
+function editExercise(weekId,dayId,exId){
+  const w = state.weeks.find(w=>w.id===weekId);
+  const d = w.days.find(x=>x.id===dayId);
+  const ex = d.exercises.find(x=>x.id===exId);
+  if(!ex) return;
+  openAddExerciseModal(weekId,dayId,exId);
+  setTimeout(()=>{
+    selectExercise(ex.name);
+    seriesCountInput.value = ex.series.length;
+    seriesTypeSelect.value = ex.seriesType || 'lineal';
+    buildSeriesConfig();
+    Array.from(seriesConfigArea.children).forEach((r,i)=>{
+      const inputs = r.querySelectorAll('input');
+      const s = ex.series[i] || {};
+      inputs[0].value = s.reps || s.time || '';
+      inputs[1].value = s.weight || '';
+      inputs[2].value = s.rest || '';
+    });
+  },50);
+}
+
+function removeExercise(weekId,dayId,exId){
+  if(!confirm('Eliminar este ejercicio?')) return;
+  const w = state.weeks.find(w=>w.id===weekId);
+  const d = w.days.find(x=>x.id===dayId);
+  d.exercises = d.exercises.filter(e=>e.id!==exId);
+  saveState(); renderDays();
+}
+
+/* ======= Ejercicios globales (listado y personalizados) ======= */
+const exercisesModal = document.getElementById('exercisesModal');
+const globalExerciseList = document.getElementById('globalExerciseList');
+const globalExerciseSearch = document.getElementById('globalExerciseSearch');
+const customExerciseName = document.getElementById('customExerciseName');
+const saveCustomExercise = document.getElementById('saveCustomExercise');
+const clearCustomExercise = document.getElementById('clearCustomExercise');
+
+document.getElementById('openExercisesBtn').addEventListener('click', ()=>{ openExercisesModal(); });
+document.getElementById('closeExercisesModal').addEventListener('click', ()=>{ exercisesModal.style.display='none'; });
+
+function openExercisesModal(){ exercisesModal.style.display='flex'; renderGlobalExercises(); }
+
+function renderGlobalExercises(filter=''){
+  globalExerciseList.innerHTML = '';
+  const list = state.exercises.filter(e=>e.toLowerCase().includes(filter.toLowerCase()));
+  list.forEach((name,idx)=>{
+    const row = el('div',{class:'exercise-row'}, el('div',{}, el('div',{}, name), el('div',{class:'small'}, '')), el('div',{}, el('button',{class:'btn ghost', onclick:()=>copyExerciseToClipboard(name)}, 'Copiar')));
+    globalExerciseList.appendChild(row);
+  });
+  if(list.length===0) globalExerciseList.appendChild(el('div',{class:'small'}, 'No se encontraron ejercicios'));
+}
+globalExerciseSearch.addEventListener('input', ()=>renderGlobalExercises(globalExerciseSearch.value));
+
+saveCustomExercise.addEventListener('click', ()=>{
+  const name = customExerciseName.value.trim();
+  if(!name){ alert('Escribe un nombre para el ejercicio'); return; }
+  state.exercises.unshift(name);
+  saveState();
+  customExerciseName.value='';
+  renderGlobalExercises();
+  alert('Ejercicio personalizado guardado');
+});
+clearCustomExercise.addEventListener('click', ()=>{ customExerciseName.value=''; });
+
+function copyExerciseToClipboard(name){
+  navigator.clipboard?.writeText(name).then(()=>alert('Ejercicio copiado al portapapeles'));
+}
+
+/* ======= Nombre de usuario ======= */
+saveNameBtn.addEventListener('click', ()=>{
+  const v = nameInput.value.trim();
+  state.name = v;
+  localStorage.setItem(NAME_KEY, v);
+  saveState();
+  renderHeaderName();
+});
+
+/* ======= Reset datos ======= */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm('¿Restablecer todos los datos guardados? Esto eliminará semanas, días y ejercicios personalizados.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(EXERCISES_KEY);
+  localStorage.removeItem(NAME_KEY);
+  location.reload();
+});
+
+/* ======= Abrir modal añadir personalizado desde modal de añadir ejercicio ======= */
+addCustomExerciseBtn.addEventListener('click', ()=>{
+  exercisesModal.style.display='flex';
+  exerciseModal.style.display='none';
+});
+
+/* ======= Guardar ejercicios personalizados en estado y localStorage ======= */
+window.addEventListener('beforeunload', ()=>{ saveState(); });
+
+/* ======= Exportar / Importar / Compartir ======= */
+const fileInput = document.getElementById('fileInput');
+document.getElementById('exportBtn').addEventListener('click', exportData);
+document.getElementById('importBtn').addEventListener('click', ()=>fileInput.click());
+document.getElementById('downloadHtmlBtn').addEventListener('click', downloadHTML);
+document.getElementById('shareDataBtn').addEventListener('click', copyDataToClipboard);
+fileInput.addEventListener('change', handleFileImport);
+
+function exportData(){
+  try{
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plan-entrenamiento.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){ alert('Error al exportar: ' + e.message); }
+}
+
+function handleFileImport(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!confirm('¿Importar datos desde este archivo? Esto reemplazará los datos actuales.')) return;
+      state = parsed;
+      saveState();
+      renderWeeks(); renderDays(); renderHeaderName(); renderExerciseList(); renderGlobalExercises();
+      alert('Datos importados correctamente');
+    }catch(err){ alert('Archivo inválido: ' + err.message); }
+  };
+  reader.readAsText(file);
+  // reset input
+  e.target.value = '';
+}
+
+function copyDataToClipboard(){
+  try{
+    const dataStr = JSON.stringify(state);
+    navigator.clipboard.writeText(dataStr).then(()=>{
+      alert('JSON copiado al portapapeles. Puedes pegarlo en un mensaje o guardarlo en un archivo.');
+    }, ()=>{ prompt('Copia manualmente el JSON:', dataStr); });
+  }catch(e){ alert('Error al copiar: ' + e.message); }
+}
+
+function downloadHTML(){
+  try{
+    // Construye el HTML actual como texto (incluye el contenido del documento)
+    const doc = document.documentElement.outerHTML;
+    const blob = new Blob([doc], {type: 'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'planificador-entrenamientos.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){ alert('Error al descargar HTML: ' + e.message); }
+}
+
+/* ======= Inicial render ======= */
+renderWeeks();
+renderDays();
+renderHeaderName();
+renderExerciseList();
+renderGlobalExercises();
+
+/* ======= Botones auxiliares ======= */
+document.getElementById('renameWeekBtn').addEventListener('click', ()=>{
+  if(!activeWeekId) return alert('Selecciona una semana primero');
+  renameWeek(activeWeekId);
+});
+document.getElementById('deleteWeekBtn').addEventListener('click', ()=>{
+  if(!activeWeekId) return alert('Selecciona una semana primero');
+  deleteWeek(activeWeekId);
+});
+</script>
+</body>
+</html>
